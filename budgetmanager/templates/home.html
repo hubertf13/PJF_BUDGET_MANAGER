@@ -5,7 +5,7 @@
         <div class="card border-dark mb-3">
             <div class="row card-body fs-4">
                 <div class="col fw-bold">
-                    {{ transaction.category }}
+                    {{ transaction.category_name }}
                 </div>
                 <div class="col text-end">
                     {{ transaction.total }}
@@ -14,7 +14,7 @@
             <div class="card-header fs-5">
                 <div class="row">
                     <small class="col card-title">{{ transaction.transaction_date.strftime('%d %B, %Y') }}</small>
-                    <small class="col card-title text-end">{{ transaction.money_amount }}</small>
+                    <small class="col card-title text-end">{{ '%0.2f' | format(transaction.amount|float) }}zł</small>
                 </div>
             </div>
         </div>

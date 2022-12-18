@@ -35,9 +35,12 @@ def first_database_init():
 @app.route("/")
 @app.route("/home")
 def home():
-    transactions = Transaction.query.all()
     first_database_init()
-    return render_template("home.html", transactions=transactions, appname=APPNAME)
+    if current_user.is_active:
+        transactions = Transaction.query.filter_by(user_id=current_user.id).all()
+        return render_template("home.html", transactions=transactions, appname=APPNAME)
+    else:
+        return render_template("homeNotLogged.html", appname=APPNAME)
 
 
 @app.route("/about")
@@ -119,11 +122,11 @@ def account():
 @app.route("/home/transaction/new", methods=['GET', 'POST'])
 @login_required
 def new_transaction():
-    transactions = Transaction.query.all()
+    transactions = Transaction.query.filter_by(user_id=current_user.id).all()
     # if request.method == "POST":
     form = TransactionForm(request.form)
     if form.submit.data:
-        transaction = Transaction(category_name=form.category.data, amount=round(form.amount.data, 2),
+        transaction = Transaction(category_name=form.category.data, amount=form.amount.data,
                                   transaction_date=form.date.data, description=form.description.data,
                                   user=current_user)
         db.session.add(transaction)
@@ -145,7 +148,7 @@ def get_categories_list():
 @app.route("/home/transaction", methods=['GET', 'POST'])
 @login_required
 def open_transaction_window():
-    transactions = Transaction.query.all()
+    transactions = Transaction.query.filter_by(user_id=current_user.id).all()
     transaction_form = TransactionForm()
     transaction_form.category.choices = get_categories_list()
     return render_template("create_transaction.html", transactions=transactions, appname=APPNAME,
