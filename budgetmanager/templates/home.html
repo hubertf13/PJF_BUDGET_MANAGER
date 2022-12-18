@@ -1,0 +1,35 @@
+{% extends "layout.html" %}
+{% block content %}
+    {% for transaction in transactions %}
+
+        <div class="card border-dark mb-3">
+            <div class="row card-body fs-4">
+                <div class="col fw-bold">
+                    {{ transaction.category }}
+                </div>
+                <div class="col text-end">
+                    {{ transaction.total }}
+                </div>
+            </div>
+            <div class="card-header fs-5">
+                <div class="row">
+                    <small class="col card-title">{{ transaction.transaction_date.strftime('%d %B, %Y') }}</small>
+                    <small class="col card-title text-end">{{ transaction.money_amount }}</small>
+                </div>
+            </div>
+        </div>
+
+        {#        <article class="media content-section">#}
+        {#            <div class="media-body">#}
+        {#                <div class="article-metadata">#}
+        {#                    <a>{{ transaction.category }}</a>#}
+        {#                    <small>{{ transaction.transaction_date }}</small>#}
+        {#                </div>#}
+        {#                <h2><a>{{ transaction.money_amount }}</a></h2>#}
+        {#                <p>{{ transaction.description }}</p>#}
+        {#            </div>#}
+        {#        </article>#}
+    {% endfor %}
+{% block transactionWindow %}{% endblock %}
+{% endblock content %}
+

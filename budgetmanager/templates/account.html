@@ -1,0 +1,47 @@
+{% extends "layout.html" %}
+{% block content %}
+    <div class="content-section">
+        <div class="d-flex mt-2">
+            <div class="flex-shrink-0">
+                <img class="rounded-circle account-img" src={{ image_file }}>
+            </div>
+            <div class="flex-grow-1 ms-3">
+                <h2 class="account-heading">{{ current_user.username }}</h2>
+            </div>
+        </div>
+        <!-- it will post to the same route that we are currently on, enctype is for picture update -->
+        <form method="POST" action="" enctype="multipart/form-data">
+            <!-- csrf token -->
+            {{ form.hidden_tag() }}
+            <fieldset>
+                <legend class="border-bottom mb-3">Account Info</legend>
+                <div class="mb-3">
+                    {{ form.username.label(class="form-label") }}
+
+                    {% if form.username.errors %}
+                        {{ form.username(class="form-control form-lg is-invalid") }}
+                        <div class="invalid-feedback">
+                            {% for error in form.username.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        {{ form.username(class="form-control form-lg") }}
+                    {% endif %}
+                </div>
+                <div class="mb-3">
+                    {{ form.picture.label(class="form-label") }}
+                    {{ form.picture(class="form-control") }}
+                    {% if form.picture.errors %}
+                        {% for error in form.picture.errors %}
+                            <span class="text-danger">{{ error }}</span><br>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+            </fieldset>
+            <div class="mb-2">
+                {{ form.submit(class="btn btn-outline-info") }}
+            </div>
+        </form>
+    </div>
+{% endblock content %}

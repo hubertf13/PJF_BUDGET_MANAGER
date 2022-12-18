@@ -1,0 +1,92 @@
+{% extends "home.html" %}
+{% block transactionWindow %}
+    <div class="modal fade" data-bs-backdrop="static" data-bs-keyboard="false" id="transactionWindow" tabindex="-1"
+         aria-labelledby="AddTransactionLabel"
+         aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="AddTransactionLabel">Add transaction</h1>
+                    <a type="button" class="btn-close" href="{{ url_for('home') }}"></a>
+                </div>
+                <div class="modal-body">
+                    <form method="POST" action="{{ url_for('new_transaction') }}">
+                        {{ transactionForm.hidden_tag() }}
+                        <div class="row mb-3">
+                            <div class="col">
+                                {{ transactionForm.category.label(class="col-form-label") }}<br>
+                                {% if transactionForm.category.errors %}
+                                    {{ transactionForm.category(class="form-select is-invalid") }}
+                                    <div class="invalid-feedback">
+                                        {% for error in transactionForm.category.errors %}
+                                            <span>{{ error }}</span>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    {{ transactionForm.category(class="form-select") }}
+                                {% endif %}
+                            </div>
+                            <div class="col">
+                                {{ transactionForm.amount.label(class="col-form-label") }}<br>
+
+                                {% if transactionForm.amount.errors %}
+                                    {{ transactionForm.amount(class="form-control form-control-lg is-invalid", placeholder="0") }}
+                                    <div class="invalid-feedback">
+                                        {% for error in transactionForm.amount.errors %}
+                                            <span>{{ error }}</span>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    {{ transactionForm.amount(class="form-control form-control-lg", placeholder="0") }}
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col">
+                                {{ transactionForm.description.label(class="col-form-label") }}<br>
+
+                                {% if transactionForm.description.errors %}
+                                    {{ transactionForm.description(class="form-control is-invalid") }}
+                                    <div class="invalid-feedback">
+                                        {% for error in transactionForm.description.errors %}
+                                            <span>{{ error }}</span>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    {{ transactionForm.description(class="form-control") }}
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col">
+                                {{ transactionForm.date.label(class="col-form-label") }}<br>
+
+                                {% if transactionForm.date.errors %}
+                                    {{ transactionForm.date(class="form-control is-invalid") }}
+                                    <div class="invalid-feedback">
+                                        {% for error in transactionForm.date.errors %}
+                                            <span>{{ error }}</span>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    {{ transactionForm.date(class="form-control") }}
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <a type="button" class="btn btn-secondary" href="{{ url_for('home') }}">Close</a>
+                            {{ transactionForm.submit(class="btn btn-primary") }}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+{% block transactionWindowScript %}
+    <script>
+        $(document).ready(function () {
+            $("#transactionWindow").modal("show")
+        })
+    </script>
+{% endblock %}
