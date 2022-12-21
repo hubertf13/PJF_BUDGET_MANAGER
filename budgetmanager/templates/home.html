@@ -7,7 +7,7 @@
                     Inflow:
                 </div>
                 <div class="col text-end">
-                    +{{ inflow_sum }}zł
+                    +{{ inflow_sum }} zł
                 </div>
             </div>
             <div class="row">
@@ -15,32 +15,38 @@
                     Outflow:
                 </div>
                 <div class="col text-end">
-                    {{ outflow_sum }}zł
+                    {{ outflow_sum }} zł
                 </div>
             </div>
             <div class="row">
-                <div class="col text-end">
-                    {{ inflow_sum + outflow_sum }}
+                <div class="col mt-1 text-end" style="text-decoration: overline">
+                    {% if (inflow_sum + outflow_sum) > 0 %}
+                        +{{ '%0.2f' | format((inflow_sum + outflow_sum)|float) }} zł
+                    {% elif (inflow_sum + outflow_sum) < 0 %}
+                        {{ '%0.2f' | format((inflow_sum + outflow_sum)|float) }} zł
+                    {% else %}
+                        {{ '%0.2f' | format((inflow_sum + outflow_sum)|float) }} zł
+                    {% endif %}
                 </div>
             </div>
         </div>
     </div>
-    {% for cat in category_and_total %}
+    {% for category_and_money in money_amount_by_category %}
         {% for tran in transactions %}
-            {% if cat[0] == tran[0].category_name %}
+            {% if category_and_money[0] == tran[0].category_name %}
                 <div class="card border-dark mb-3">
                     <div class="row card-body fs-4">
                         <div class="col fw-bold">
-                            {{ cat[0] }}
+                            {{ category_and_money[0] }}
                         </div>
                         <div class="col">
-                            {% if cat[0] == "Salary" or cat[0] == "Other Income" or cat[0] == "Incoming Transfer" %}
+                            {% if category_and_money[0] in income_cateogires %}
                                 <div class="col text-end">
-                                    Inflow: +{{ cat[1] }}zł
+                                    Inflow: +{{ category_and_money[1] }} zł
                                 </div>
                             {% else %}
                                 <div class="col text-end">
-                                    Outflow: {{ cat[2] }}zł
+                                    Outflow: {{ category_and_money[1] }} zł
                                 </div>
                             {% endif %}
                         </div>
@@ -51,7 +57,7 @@
                                href="#c{{ transaction.id }}" type="button"
                                aria-expanded="false" aria-controls="collapseExample">
                                 <small class="col card-title">{{ transaction.transaction_date.strftime('%d %B, %Y') }}</small>
-                                <small class="col card-title text-end">{{ '%0.2f' | format(transaction.amount|float) }}zł</small>
+                                <small class="col card-title text-end">{{ '%0.2f' | format(transaction.amount|float) }} zł</small>
                             </a>
                             <div class="collapse mb-3 mt-1" id="c{{ transaction.id }}">
                                 <a class="card-header fs-6 text-muted text-decoration-none">Description</a>

@@ -13,8 +13,6 @@ from budgetmanager.models import User, Transaction, Category
 
 APPNAME = "Budget Manager"
 
-inflowCategories = ["Salary", "Other Income", "Incoming Transfer"]
-
 
 def first_database_init():
     categoryList = [
@@ -25,25 +23,38 @@ def first_database_init():
         "Pay Interest", "Outgoing Transfer", "Debt Collection", "Debt", "Loan", "Repayment", "Salary", "Other Income",
         "Incoming Transfer"
     ]
+    inflow_categories = ["Salary", "Other Income", "Incoming Transfer"]
     if not db.engine.has_table('user'):
         db.create_all()
         admin_password = bcrypt.generate_password_hash('admin').decode('utf-8')
         user = User(username='admin', password=admin_password)
         db.session.add(user)
         for cat in categoryList:
-            category = Category(name=cat)
+            if cat in inflow_categories:
+                category = Category(name=cat, type="Income")
+            else:
+                category = Category(name=cat, type="Expense")
             db.session.add(category)
         db.session.commit()
 
 
+def get_income_categories():
+    income_categories = []
+    income_categories_objects = Category.query.filter_by(type="Income").all()
+    for ic in income_categories_objects:
+        income_categories.append(ic.name)
+    return income_categories
+
+
 def get_inflow_and_outflow_sum(category_and_total):
-    inflow_sum = 0;
-    outflow_sum = 0;
+    inflow_sum = 0
+    outflow_sum = 0
     for cat in category_and_total:
-        if cat[0] in inflowCategories:
+        income_categories = get_income_categories()
+        if cat[0] in income_categories:
             inflow_sum += cat[1]
         else:
-            outflow_sum -= cat[2]
+            outflow_sum -= cat[1]
     return inflow_sum, outflow_sum - (outflow_sum * 2)
 
 
@@ -52,13 +63,27 @@ def get_inflow_and_outflow_sum(category_and_total):
 def home():
     first_database_init()
     if current_user.is_active:
-        categorized_transactions, category_and_total = get_categorized_transactions_with_total_list()
-        inflow_sum, outflow_sum = get_inflow_and_outflow_sum(category_and_total)
-        return render_template("home.html", transactions=categorized_transactions,
-                               category_and_total=category_and_total, appname=APPNAME, inflow_sum=inflow_sum,
-                               outflow_sum=outflow_sum)
+        categorized_transactions = get_categorized_transactions()
+        money_amount_by_category = get_money_amount_by_category(categorized_transactions)
+        inflow_sum, outflow_sum = get_inflow_and_outflow_sum(money_amount_by_category)
+        return render_template("home.html", transactions=categorized_transactions, appname=APPNAME,
+                               money_amount_by_category=money_amount_by_category, inflow_sum=inflow_sum,
+                               income_cateogires=get_income_categories(), outflow_sum=outflow_sum)
     else:
         return render_template("homeNotLogged.html", appname=APPNAME)
+
+
+@app.route("/home/transaction", methods=['GET', 'POST'])
+@login_required
+def open_transaction_window():
+    transaction_form = TransactionForm()
+    transaction_form.category.choices = get_categories_list()
+    categorized_transactions = get_categorized_transactions()
+    money_amount_by_category = get_money_amount_by_category(categorized_transactions)
+    inflow_sum, outflow_sum = get_inflow_and_outflow_sum(money_amount_by_category)
+    return render_template("create_transaction.html", transactions=categorized_transactions, appname=APPNAME,
+                           transactionForm=transaction_form, inflow_sum=inflow_sum, outflow_sum=outflow_sum,
+                           money_amount_by_category=money_amount_by_category, income_cateogires=get_income_categories())
 
 
 @app.route("/about")
@@ -144,7 +169,8 @@ def new_transaction():
     # if request.method == "POST":
     form = TransactionForm(request.form)
     if form.submit.data:
-        if form.category.data not in inflowCategories:
+        income_categories = get_income_categories()
+        if form.category.data not in income_categories:
             form.amount.data = form.amount.data - (form.amount.data * 2)
         transaction = Transaction(category_name=form.category.data, amount=form.amount.data,
                                   transaction_date=form.date.data, description=form.description.data,
@@ -158,42 +184,44 @@ def new_transaction():
 
 def get_categories_list():
     categories = Category.query.all()
-    valueNameList = []
+    value_name_list = []
     for category in categories:
         valueNameTuple = (category.name, category.name)
-        valueNameList.append(valueNameTuple)
-    return valueNameList
+        value_name_list.append(valueNameTuple)
+    return value_name_list
 
 
-@app.route("/home/transaction", methods=['GET', 'POST'])
-@login_required
-def open_transaction_window():
-    transaction_form = TransactionForm()
-    transaction_form.category.choices = get_categories_list()
-    categorized_transactions, category_and_total = get_categorized_transactions_with_total_list()
-    inflow_sum, outflow_sum = get_inflow_and_outflow_sum(category_and_total)
-    return render_template("create_transaction.html", transactions=categorized_transactions,
-                           category_and_total=category_and_total, appname=APPNAME, transactionForm=transaction_form,
-                           inflow_sum=inflow_sum, outflow_sum=outflow_sum)
+def get_money_amount_by_category(categorized_transactions):
+    money_amount_by_category = []
+    for ct in categorized_transactions:
+        # First we make dictionary with category -> total amount of money
+        category_and_amount_dics = {}
+        for transaction in ct:
+            if transaction.category_name not in category_and_amount_dics.keys():
+                category_and_amount_dics[transaction.category_name] = float(transaction.amount)
+            else:
+                category_and_amount_dics[transaction.category_name] += float(transaction.amount)
+        # Second we change dictionary into list to view it in html
+        money_amount_by_category.append(change_dictionary_to_list(category_and_amount_dics))
+
+    return money_amount_by_category
 
 
-def get_categorized_transactions_with_total_list():
+def change_dictionary_to_list(category_and_amount_dics):
+    category_and_amount_list = []
+    for caa in category_and_amount_dics.keys():
+        category_and_amount_list = [caa, category_and_amount_dics.get(caa)]
+    return category_and_amount_list
+
+
+def get_categorized_transactions():
     categorized_transactions = []
-    category_and_total = []
     categories = Category.query.all()
     for category in categories:
         category_name = category.name
         transactions_by_category = Transaction.query.filter_by(user_id=current_user.id,
                                                                category_name=category_name).all()
-        inflow = 0
-        outflow = 0
         if len(transactions_by_category) != 0:
             categorized_transactions.append(
                 sorted(transactions_by_category, key=attrgetter('transaction_date'), reverse=True))
-            for tbc in transactions_by_category:
-                if tbc.category_name in inflowCategories:
-                    inflow = inflow + float(tbc.amount)
-                else:
-                    outflow = outflow + float(tbc.amount)
-            category_and_total.append([transactions_by_category[0].category_name, inflow, outflow])
-    return categorized_transactions, category_and_total
+    return categorized_transactions
