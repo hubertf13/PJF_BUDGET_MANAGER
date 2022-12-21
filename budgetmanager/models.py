@@ -37,4 +37,4 @@ class Transaction(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
     def __repr__(self):
-        return f"Transaction('{self.transaction_date}', '{self.amount}', user:{self.user_id})"
+        return f"Transaction(''{self.category_name}', {self.transaction_date}', '{self.amount}', user:{self.user_id})"

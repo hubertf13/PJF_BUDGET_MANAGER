@@ -1,15 +1,19 @@
 # This file contains all the logic.
-
 import os
 import secrets
+from operator import attrgetter
+
 from PIL import Image
 from flask import render_template, url_for, flash, redirect, request
+from flask_login import login_user, current_user, logout_user, login_required
+
 from budgetmanager import app, db, bcrypt
 from budgetmanager.forms import RegistrationForm, LoginForm, UpdateAccountForm, TransactionForm
 from budgetmanager.models import User, Transaction, Category
-from flask_login import login_user, current_user, logout_user, login_required
 
 APPNAME = "Budget Manager"
+
+inflowCategories = ["Salary", "Other Income", "Incoming Transfer"]
 
 
 def first_database_init():
@@ -32,13 +36,27 @@ def first_database_init():
         db.session.commit()
 
 
+def get_inflow_and_outflow_sum(category_and_total):
+    inflow_sum = 0;
+    outflow_sum = 0;
+    for cat in category_and_total:
+        if cat[0] in inflowCategories:
+            inflow_sum += cat[1]
+        else:
+            outflow_sum -= cat[2]
+    return inflow_sum, outflow_sum - (outflow_sum * 2)
+
+
 @app.route("/")
 @app.route("/home")
 def home():
     first_database_init()
     if current_user.is_active:
-        transactions = Transaction.query.filter_by(user_id=current_user.id).all()
-        return render_template("home.html", transactions=transactions, appname=APPNAME)
+        categorized_transactions, category_and_total = get_categorized_transactions_with_total_list()
+        inflow_sum, outflow_sum = get_inflow_and_outflow_sum(category_and_total)
+        return render_template("home.html", transactions=categorized_transactions,
+                               category_and_total=category_and_total, appname=APPNAME, inflow_sum=inflow_sum,
+                               outflow_sum=outflow_sum)
     else:
         return render_template("homeNotLogged.html", appname=APPNAME)
 
@@ -126,6 +144,8 @@ def new_transaction():
     # if request.method == "POST":
     form = TransactionForm(request.form)
     if form.submit.data:
+        if form.category.data not in inflowCategories:
+            form.amount.data = form.amount.data - (form.amount.data * 2)
         transaction = Transaction(category_name=form.category.data, amount=form.amount.data,
                                   transaction_date=form.date.data, description=form.description.data,
                                   user=current_user)
@@ -148,8 +168,32 @@ def get_categories_list():
 @app.route("/home/transaction", methods=['GET', 'POST'])
 @login_required
 def open_transaction_window():
-    transactions = Transaction.query.filter_by(user_id=current_user.id).all()
     transaction_form = TransactionForm()
     transaction_form.category.choices = get_categories_list()
-    return render_template("create_transaction.html", transactions=transactions, appname=APPNAME,
-                           transactionForm=transaction_form)
+    categorized_transactions, category_and_total = get_categorized_transactions_with_total_list()
+    inflow_sum, outflow_sum = get_inflow_and_outflow_sum(category_and_total)
+    return render_template("create_transaction.html", transactions=categorized_transactions,
+                           category_and_total=category_and_total, appname=APPNAME, transactionForm=transaction_form,
+                           inflow_sum=inflow_sum, outflow_sum=outflow_sum)
+
+
+def get_categorized_transactions_with_total_list():
+    categorized_transactions = []
+    category_and_total = []
+    categories = Category.query.all()
+    for category in categories:
+        category_name = category.name
+        transactions_by_category = Transaction.query.filter_by(user_id=current_user.id,
+                                                               category_name=category_name).all()
+        inflow = 0
+        outflow = 0
+        if len(transactions_by_category) != 0:
+            categorized_transactions.append(
+                sorted(transactions_by_category, key=attrgetter('transaction_date'), reverse=True))
+            for tbc in transactions_by_category:
+                if tbc.category_name in inflowCategories:
+                    inflow = inflow + float(tbc.amount)
+                else:
+                    outflow = outflow + float(tbc.amount)
+            category_and_total.append([transactions_by_category[0].category_name, inflow, outflow])
+    return categorized_transactions, category_and_total
