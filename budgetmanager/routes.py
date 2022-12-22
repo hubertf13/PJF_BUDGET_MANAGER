@@ -4,7 +4,7 @@ import secrets
 from operator import attrgetter
 
 from PIL import Image
-from flask import render_template, url_for, flash, redirect, request
+from flask import render_template, url_for, flash, redirect, request, abort
 from flask_login import login_user, current_user, logout_user, login_required
 
 from budgetmanager import app, db, bcrypt
@@ -141,7 +141,8 @@ def open_transaction_window():
     inflow_sum, outflow_sum = get_inflow_and_outflow_sum(money_amount_by_category)
     return render_template("create_transaction.html", transactions=categorized_transactions, appname=APPNAME,
                            transactionForm=transaction_form, inflow_sum=inflow_sum, outflow_sum=outflow_sum,
-                           money_amount_by_category=money_amount_by_category, income_cateogires=get_income_categories())
+                           money_amount_by_category=money_amount_by_category, income_cateogires=get_income_categories(),
+                           legend='Add Transaction')
 
 
 @app.route("/about")
@@ -224,4 +225,62 @@ def new_transaction():
         db.session.commit()
         flash('New transaction added!', 'success')
         return redirect(url_for('home'))
-    return render_template("home.html", transactions=transactions, appname=APPNAME)
+    return redirect(url_for('home'))
+
+
+@app.route("/home/transaction/<int:transaction_id>/delete", methods=['POST'])
+@login_required
+def delete_transaction(transaction_id):
+    transaction = Transaction.query.get_or_404(transaction_id)
+    if transaction.user_id != current_user.id:
+        abort(403)
+    db.session.delete(transaction)
+    db.session.commit()
+    flash('Your transaction has been deleted!', 'success')
+    return redirect(url_for('home'))
+
+
+@app.route("/home/transaction/<int:transaction_id>/edit", methods=['GET', 'POST'])
+@login_required
+def edit_transaction(transaction_id):
+    transactions = Transaction.query.filter_by(user_id=current_user.id).all()
+    form = TransactionForm(request.form)
+    transaction = Transaction.query.get_or_404(transaction_id)
+    if transaction.user_id != current_user.id:
+        abort(403)
+    income_categories = get_income_categories()
+    if form.submit.data:
+        transaction.category_name = form.category.data
+        if form.category.data not in income_categories:
+            form.amount.data = form.amount.data - (form.amount.data * 2)
+        transaction.amount = form.amount.data
+        transaction.description = form.description.data
+        transaction.transaction_date = form.date.data
+        db.session.commit()
+        flash('Your transaction has been edited!', 'success')
+        return redirect(url_for('home'))
+
+    return redirect(url_for('home'))
+
+
+@app.route("/home/transaction/<int:transaction_id>")
+@login_required
+def open_edit_transaction_window(transaction_id):
+    transaction = Transaction.query.get_or_404(transaction_id)
+    if transaction.user_id != current_user.id:
+        abort(403)
+    form = TransactionForm()
+    form.category.choices = get_categories_list()
+    form.category.data = transaction.category_name
+    if transaction.amount < 0:
+        form.amount.data = transaction.amount - (transaction.amount * 2)
+    else:
+        form.amount.data = transaction.amount
+    form.date.data = transaction.transaction_date
+    categorized_transactions = get_categorized_transactions()
+    money_amount_by_category = get_money_amount_by_category(categorized_transactions)
+    inflow_sum, outflow_sum = get_inflow_and_outflow_sum(money_amount_by_category)
+    return render_template("edit_transaction.html", transactions=categorized_transactions, appname=APPNAME,
+                           transactionForm=form, inflow_sum=inflow_sum, outflow_sum=outflow_sum,
+                           money_amount_by_category=money_amount_by_category, income_cateogires=get_income_categories(),
+                           legend='Edit Transaction', transaction_id=transaction_id)
