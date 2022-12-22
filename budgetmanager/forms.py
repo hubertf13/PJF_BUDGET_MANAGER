@@ -43,7 +43,7 @@ class UpdateAccountForm(FlaskForm):
 
 class TransactionForm(FlaskForm):
     category = SelectField("Category", validators=[DataRequired()], choices=[])
-    amount = DecimalField("Amount", validators=[DataRequired(), NumberRange(min=0.01)])
+    amount = DecimalField("Amount", validators=[DataRequired(), NumberRange(min=0.01)], places=2)
     description = TextAreaField('Description', validators=[Length(min=0, max=100)])
     date = DateField('Date', default=datetime.utcnow, validators=[DataRequired()])
     submit = SubmitField("Save")

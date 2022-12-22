@@ -1,24 +1,77 @@
 {% extends "layout.html" %}
 {% block content %}
-    {% for transaction in transactions %}
-
-        <div class="card border-dark mb-3">
-            <div class="row card-body fs-4">
-                <div class="col fw-bold">
-                    {{ transaction.category }}
+    <div class="card border-dark mb-3">
+        <div class="card-body fs-6">
+            <div class="row">
+                <div class="col">
+                    Inflow:
                 </div>
                 <div class="col text-end">
-                    {{ transaction.total }}
+                    +{{ inflow_sum }} zł
                 </div>
             </div>
-            <div class="card-header fs-5">
-                <div class="row">
-                    <small class="col card-title">{{ transaction.transaction_date.strftime('%d %B, %Y') }}</small>
-                    <small class="col card-title text-end">{{ transaction.money_amount }}</small>
+            <div class="row">
+                <div class="col">
+                    Outflow:
+                </div>
+                <div class="col text-end">
+                    {{ outflow_sum }} zł
+                </div>
+            </div>
+            <div class="row">
+                <div class="col mt-1 text-end" style="text-decoration: overline">
+                    {% if (inflow_sum + outflow_sum) > 0 %}
+                        +{{ '%0.2f' | format((inflow_sum + outflow_sum)|float) }} zł
+                    {% elif (inflow_sum + outflow_sum) < 0 %}
+                        {{ '%0.2f' | format((inflow_sum + outflow_sum)|float) }} zł
+                    {% else %}
+                        {{ '%0.2f' | format((inflow_sum + outflow_sum)|float) }} zł
+                    {% endif %}
                 </div>
             </div>
         </div>
+    </div>
+    {% for category_and_money in money_amount_by_category %}
+        {% for tran in transactions %}
+            {% if category_and_money[0] == tran[0].category_name %}
+                <div class="card border-dark mb-3">
+                    <div class="row card-body fs-4">
+                        <div class="col fw-bold">
+                            {{ category_and_money[0] }}
+                        </div>
+                        <div class="col">
+                            {% if category_and_money[0] in income_cateogires %}
+                                <div class="col text-end">
+                                    Inflow: +{{ category_and_money[1] }} zł
+                                </div>
+                            {% else %}
+                                <div class="col text-end">
+                                    Outflow: {{ category_and_money[1] }} zł
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="card-header fs-5">
+                        {% for transaction in tran %}
+                            <a style="color: #333333" class="row text-decoration-none" data-bs-toggle="collapse"
+                               href="#c{{ transaction.id }}" type="button"
+                               aria-expanded="false" aria-controls="collapseExample">
+                                <small class="col card-title">{{ transaction.transaction_date.strftime('%d %B, %Y') }}</small>
+                                <small class="col card-title text-end">{{ '%0.2f' | format(transaction.amount|float) }}
+                                    zł</small>
+                            </a>
+                            <div class="collapse mb-3 mt-1" id="c{{ transaction.id }}">
+                                <a class="card-header fs-6 text-muted text-decoration-none">Description</a>
+                                <div class="card card-body">
+                                    {{ transaction.description }}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+        {% endfor %}
     {% endfor %}
-{% block transactionWindow %}{% endblock %}
+    {% block transactionWindow %}{% endblock %}
 {% endblock content %}
 

@@ -22,9 +22,10 @@ class User(db.Model, UserMixin):
 
 class Category(db.Model):
     name = db.Column(db.String(100), primary_key=True)
+    type = db.Column(db.String(100), nullable=False)
 
     def __repr__(self):
-        return f"{self.name}"
+        return f"{self.name}:{self.type}"
 
 class Transaction(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -37,4 +38,4 @@ class Transaction(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
     def __repr__(self):
-        return f"Transaction('{self.transaction_date}', '{self.amount}', user:{self.user_id})"
+        return f"Transaction(''{self.category_name}', {self.transaction_date}', '{self.amount}', user:{self.user_id})"
