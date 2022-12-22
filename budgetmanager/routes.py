@@ -38,6 +38,64 @@ def first_database_init():
         db.session.commit()
 
 
+def get_categories_list():
+    categories = Category.query.all()
+    value_name_list = []
+    for category in categories:
+        valueNameTuple = (category.name, category.name)
+        value_name_list.append(valueNameTuple)
+    return value_name_list
+
+
+def get_money_amount_by_category(categorized_transactions):
+    money_amount_by_category = []
+    for ct in categorized_transactions:
+        # First we make dictionary with category -> total amount of money
+        category_and_amount_dics = {}
+        for transaction in ct:
+            if transaction.category_name not in category_and_amount_dics.keys():
+                category_and_amount_dics[transaction.category_name] = float(transaction.amount)
+            else:
+                category_and_amount_dics[transaction.category_name] += float(transaction.amount)
+        # Second we change dictionary into list to view it in html
+        money_amount_by_category.append(change_dictionary_to_list(category_and_amount_dics))
+
+    return money_amount_by_category
+
+
+def change_dictionary_to_list(category_and_amount_dics):
+    category_and_amount_list = []
+    for caa in category_and_amount_dics.keys():
+        category_and_amount_list = [caa, category_and_amount_dics.get(caa)]
+    return category_and_amount_list
+
+
+def get_categorized_transactions():
+    categorized_transactions = []
+    categories = Category.query.all()
+    for category in categories:
+        category_name = category.name
+        transactions_by_category = Transaction.query.filter_by(user_id=current_user.id,
+                                                               category_name=category_name).all()
+        if len(transactions_by_category) != 0:
+            categorized_transactions.append(
+                sorted(transactions_by_category, key=attrgetter('transaction_date'), reverse=True))
+    return categorized_transactions
+
+
+def save_picture(form_picture):
+    random_hex = secrets.token_hex(8)
+    file_name, file_ext = os.path.splitext(form_picture.filename)
+    picture_filename = random_hex + file_ext
+    picture_path = os.path.join(app.root_path, 'static/profile_pics', picture_filename)
+    output_size = (125, 125)
+    i = Image.open(form_picture)
+    i.thumbnail(output_size)
+    i.save(picture_path)
+
+    return picture_filename
+
+
 def get_income_categories():
     income_categories = []
     income_categories_objects = Category.query.filter_by(type="Income").all()
@@ -131,19 +189,6 @@ def logout():
     return redirect(url_for('home'))
 
 
-def save_picture(form_picture):
-    random_hex = secrets.token_hex(8)
-    file_name, file_ext = os.path.splitext(form_picture.filename)
-    picture_filename = random_hex + file_ext
-    picture_path = os.path.join(app.root_path, 'static/profile_pics', picture_filename)
-    output_size = (125, 125)
-    i = Image.open(form_picture)
-    i.thumbnail(output_size)
-    i.save(picture_path)
-
-    return picture_filename
-
-
 @app.route("/account", methods=['GET', 'POST'])
 @login_required
 def account():
@@ -180,48 +225,3 @@ def new_transaction():
         flash('New transaction added!', 'success')
         return redirect(url_for('home'))
     return render_template("home.html", transactions=transactions, appname=APPNAME)
-
-
-def get_categories_list():
-    categories = Category.query.all()
-    value_name_list = []
-    for category in categories:
-        valueNameTuple = (category.name, category.name)
-        value_name_list.append(valueNameTuple)
-    return value_name_list
-
-
-def get_money_amount_by_category(categorized_transactions):
-    money_amount_by_category = []
-    for ct in categorized_transactions:
-        # First we make dictionary with category -> total amount of money
-        category_and_amount_dics = {}
-        for transaction in ct:
-            if transaction.category_name not in category_and_amount_dics.keys():
-                category_and_amount_dics[transaction.category_name] = float(transaction.amount)
-            else:
-                category_and_amount_dics[transaction.category_name] += float(transaction.amount)
-        # Second we change dictionary into list to view it in html
-        money_amount_by_category.append(change_dictionary_to_list(category_and_amount_dics))
-
-    return money_amount_by_category
-
-
-def change_dictionary_to_list(category_and_amount_dics):
-    category_and_amount_list = []
-    for caa in category_and_amount_dics.keys():
-        category_and_amount_list = [caa, category_and_amount_dics.get(caa)]
-    return category_and_amount_list
-
-
-def get_categorized_transactions():
-    categorized_transactions = []
-    categories = Category.query.all()
-    for category in categories:
-        category_name = category.name
-        transactions_by_category = Transaction.query.filter_by(user_id=current_user.id,
-                                                               category_name=category_name).all()
-        if len(transactions_by_category) != 0:
-            categorized_transactions.append(
-                sorted(transactions_by_category, key=attrgetter('transaction_date'), reverse=True))
-    return categorized_transactions

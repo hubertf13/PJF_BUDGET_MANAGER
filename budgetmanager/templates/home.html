@@ -57,7 +57,8 @@
                                href="#c{{ transaction.id }}" type="button"
                                aria-expanded="false" aria-controls="collapseExample">
                                 <small class="col card-title">{{ transaction.transaction_date.strftime('%d %B, %Y') }}</small>
-                                <small class="col card-title text-end">{{ '%0.2f' | format(transaction.amount|float) }} zł</small>
+                                <small class="col card-title text-end">{{ '%0.2f' | format(transaction.amount|float) }}
+                                    zł</small>
                             </a>
                             <div class="collapse mb-3 mt-1" id="c{{ transaction.id }}">
                                 <a class="card-header fs-6 text-muted text-decoration-none">Description</a>
