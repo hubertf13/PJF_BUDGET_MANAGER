@@ -65,6 +65,17 @@
                                 <div class="card card-body">
                                     {{ transaction.description }}
                                 </div>
+                                <div class="row">
+                                    <div class="col">
+                                        <a href="{{ url_for('open_edit_transaction_window', transaction_id=transaction.id) }}"
+                                           type="button" class="mt-2 btn btn-sm btn-secondary">Edit</a>
+                                    </div>
+                                    <div class="col text-end">
+                                        <button type="button" class="mt-2 btn btn-sm btn-danger" data-bs-toggle="modal"
+                                                data-bs-target="#deleteModal" data-bs-whatever="{{ transaction.id }}">Delete
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         {% endfor %}
                     </div>
@@ -73,5 +84,38 @@
         {% endfor %}
     {% endfor %}
     {% block transactionWindow %}{% endblock %}
+    <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="deleteModalLabel">Confirm Deletion</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Delete this transaction?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>
+                    <form id="recipient-name" action="" method="POST">
+                        <input class="btn btn-danger" type="submit" value="Yes">
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        const deleteModal = document.getElementById('deleteModal')
+        deleteModal.addEventListener('show.bs.modal', event => {
+            // Button that triggered the modal
+            const button = event.relatedTarget
+            // Extract info from data-bs-* attributes
+            const recipient = button.getAttribute('data-bs-whatever')
+            // If necessary, you could initiate an AJAX request here
+            // and then do the updating in a callback.
+            //
+            // Update the modal's content.
+            const modalFooterForm = deleteModal.querySelector('.modal-footer form')
+            modalFooterForm.setAttribute("action", "/home/transaction/" + recipient + "/delete")
+        })
+    </script>
 {% endblock content %}
-
