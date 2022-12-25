@@ -1,4 +1,6 @@
 # This file contains all the logic.
+import calendar
+import datetime
 import os
 import secrets
 from operator import attrgetter
@@ -6,6 +8,7 @@ from operator import attrgetter
 from PIL import Image
 from flask import render_template, url_for, flash, redirect, request, abort
 from flask_login import login_user, current_user, logout_user, login_required
+from sqlalchemy import extract
 
 from budgetmanager import app, db, bcrypt
 from budgetmanager.forms import RegistrationForm, LoginForm, UpdateAccountForm, TransactionForm
@@ -70,13 +73,15 @@ def change_dictionary_to_list(category_and_amount_dics):
     return category_and_amount_list
 
 
-def get_categorized_transactions():
+def get_categorized_transactions(month, year):
     categorized_transactions = []
     categories = Category.query.all()
     for category in categories:
         category_name = category.name
-        transactions_by_category = Transaction.query.filter_by(user_id=current_user.id,
-                                                               category_name=category_name).all()
+        transactions_by_category = Transaction.query.filter(
+            extract('year', Transaction.transaction_date) == year).filter(
+            extract('month', Transaction.transaction_date) == month).filter_by(user_id=current_user.id,
+                                                                               category_name=category_name).all()
         if len(transactions_by_category) != 0:
             categorized_transactions.append(
                 sorted(transactions_by_category, key=attrgetter('transaction_date'), reverse=True))
@@ -116,17 +121,46 @@ def get_inflow_and_outflow_sum(category_and_total):
     return inflow_sum, outflow_sum - (outflow_sum * 2)
 
 
+@app.route("/home/month")
+def home_by_date():
+    if len(request.values.keys()) != 0:
+        month = int(request.values.get('month'))
+        if request.values.get('button') == "prev":
+            month = int(month) - 1
+        elif request.values.get('button') == "next":
+            month = int(month) + 1
+        year = int(request.values.get('year'))
+        if month < 1:
+            year = year - 1
+            month = 12
+        elif month > 12:
+            year = year + 1
+            month = 1
+        return redirect(url_for('home', month=month, year=year))
+    return redirect(url_for('home'))
+
+
 @app.route("/")
 @app.route("/home")
 def home():
     first_database_init()
     if current_user.is_active:
-        categorized_transactions = get_categorized_transactions()
+        if len(request.values.keys()) == 0:
+            date = datetime.datetime.utcnow()
+            month_name = date.strftime("%B")
+        else:
+            date = datetime.datetime(int(request.values.get('year')), int(request.values.get('month')),
+                                     datetime.datetime.utcnow().day)
+            month_name = date.strftime("%B")
+        month = request.args.get('month', date.month, type=int)
+        year = request.args.get('year', date.year, type=int)
+        categorized_transactions = get_categorized_transactions(month, year)
         money_amount_by_category = get_money_amount_by_category(categorized_transactions)
         inflow_sum, outflow_sum = get_inflow_and_outflow_sum(money_amount_by_category)
         return render_template("home.html", transactions=categorized_transactions, appname=APPNAME,
                                money_amount_by_category=money_amount_by_category, inflow_sum=inflow_sum,
-                               income_cateogires=get_income_categories(), outflow_sum=outflow_sum)
+                               income_cateogires=get_income_categories(), outflow_sum=outflow_sum, month=month,
+                               year=year, month_name=month_name)
     else:
         return render_template("homeNotLogged.html", appname=APPNAME)
 
@@ -135,14 +169,16 @@ def home():
 @login_required
 def open_transaction_window():
     transaction_form = TransactionForm()
+    month = request.args.get('month', request.values.get('month'), type=int)
+    year = request.args.get('year', request.values.get('year'), type=int)
     transaction_form.category.choices = get_categories_list()
-    categorized_transactions = get_categorized_transactions()
+    categorized_transactions = get_categorized_transactions(month, year)
     money_amount_by_category = get_money_amount_by_category(categorized_transactions)
     inflow_sum, outflow_sum = get_inflow_and_outflow_sum(money_amount_by_category)
     return render_template("create_transaction.html", transactions=categorized_transactions, appname=APPNAME,
                            transactionForm=transaction_form, inflow_sum=inflow_sum, outflow_sum=outflow_sum,
                            money_amount_by_category=money_amount_by_category, income_cateogires=get_income_categories(),
-                           legend='Add Transaction')
+                           legend='Add Transaction', month=month, year=year)
 
 
 @app.route("/about")
@@ -211,8 +247,9 @@ def account():
 @app.route("/home/transaction/new", methods=['GET', 'POST'])
 @login_required
 def new_transaction():
-    transactions = Transaction.query.filter_by(user_id=current_user.id).all()
     # if request.method == "POST":
+    month = request.args.get('month', request.values.get('month'), type=int)
+    year = request.args.get('year', request.values.get('year'), type=int)
     form = TransactionForm(request.form)
     if form.submit.data:
         income_categories = get_income_categories()
@@ -224,8 +261,8 @@ def new_transaction():
         db.session.add(transaction)
         db.session.commit()
         flash('New transaction added!', 'success')
-        return redirect(url_for('home'))
-    return redirect(url_for('home'))
+        return redirect(url_for('home_by_date', month=month, year=year))
+    return redirect(url_for('home_by_date', month=month, year=year))
 
 
 @app.route("/home/transaction/<int:transaction_id>/delete", methods=['POST'])
@@ -234,20 +271,23 @@ def delete_transaction(transaction_id):
     transaction = Transaction.query.get_or_404(transaction_id)
     if transaction.user_id != current_user.id:
         abort(403)
+    month = request.args.get('month', request.values.get('month'), type=int)
+    year = request.args.get('year', request.values.get('year'), type=int)
     db.session.delete(transaction)
     db.session.commit()
     flash('Your transaction has been deleted!', 'success')
-    return redirect(url_for('home'))
+    return redirect(url_for('home_by_date', month=month, year=year))
 
 
 @app.route("/home/transaction/<int:transaction_id>/edit", methods=['GET', 'POST'])
 @login_required
 def edit_transaction(transaction_id):
-    transactions = Transaction.query.filter_by(user_id=current_user.id).all()
     form = TransactionForm(request.form)
     transaction = Transaction.query.get_or_404(transaction_id)
     if transaction.user_id != current_user.id:
         abort(403)
+    month = request.args.get('month', request.values.get('month'), type=int)
+    year = request.args.get('year', request.values.get('year'), type=int)
     income_categories = get_income_categories()
     if form.submit.data:
         transaction.category_name = form.category.data
@@ -258,9 +298,9 @@ def edit_transaction(transaction_id):
         transaction.transaction_date = form.date.data
         db.session.commit()
         flash('Your transaction has been edited!', 'success')
-        return redirect(url_for('home'))
+        return redirect(url_for('home_by_date', month=month, year=year))
 
-    return redirect(url_for('home'))
+    return redirect(url_for('home_by_date', month=month, year=year))
 
 
 @app.route("/home/transaction/<int:transaction_id>")
@@ -277,10 +317,13 @@ def open_edit_transaction_window(transaction_id):
     else:
         form.amount.data = transaction.amount
     form.date.data = transaction.transaction_date
-    categorized_transactions = get_categorized_transactions()
+    form.description.data = transaction.description
+    month = request.args.get('month', request.values.get('month'), type=int)
+    year = request.args.get('year', request.values.get('year'), type=int)
+    categorized_transactions = get_categorized_transactions(month, year)
     money_amount_by_category = get_money_amount_by_category(categorized_transactions)
     inflow_sum, outflow_sum = get_inflow_and_outflow_sum(money_amount_by_category)
     return render_template("edit_transaction.html", transactions=categorized_transactions, appname=APPNAME,
                            transactionForm=form, inflow_sum=inflow_sum, outflow_sum=outflow_sum,
                            money_amount_by_category=money_amount_by_category, income_cateogires=get_income_categories(),
-                           legend='Edit Transaction', transaction_id=transaction_id)
+                           legend='Edit Transaction', transaction_id=transaction_id, month=month, year=year)

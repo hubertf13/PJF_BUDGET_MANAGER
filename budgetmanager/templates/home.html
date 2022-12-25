@@ -1,8 +1,23 @@
 {% extends "layout.html" %}
 {% block content %}
-    <div class="card border-dark mb-3">
-        <div class="card-body fs-6">
+    <div class="card border-primary mb-3">
+        <div class="card-header">
             <div class="row">
+                <div class="col">
+                    <a type="button" class="btn btn-sm btn-info"
+                       href="{{ url_for('home_by_date', month=month, year=year, button='prev') }}">Previous month</a>
+                </div>
+                <div class="col text-center">
+                    <a>Current month:<br>{{ month_name }} {{ year }}</a>
+                </div>
+                <div class="col text-end">
+                    <a type="button" class="btn btn-sm btn-info"
+                       href="{{ url_for('home_by_date', month=month, year=year, button='next') }}">Next month</a>
+                </div>
+            </div>
+        </div>
+        <div class="card-body fs-6">
+            <div class="row text-success">
                 <div class="col">
                     Inflow:
                 </div>
@@ -10,7 +25,7 @@
                     +{{ inflow_sum }} zł
                 </div>
             </div>
-            <div class="row">
+            <div class="row text-danger">
                 <div class="col">
                     Outflow:
                 </div>
@@ -18,16 +33,20 @@
                     {{ outflow_sum }} zł
                 </div>
             </div>
-            <div class="row">
-                <div class="col mt-1 text-end" style="text-decoration: overline">
-                    {% if (inflow_sum + outflow_sum) > 0 %}
+            <div class="row" style="text-decoration: overline">
+                {% if (inflow_sum + outflow_sum) > 0 %}
+                    <div class="col mt-1 text-end text-success" >
                         +{{ '%0.2f' | format((inflow_sum + outflow_sum)|float) }} zł
-                    {% elif (inflow_sum + outflow_sum) < 0 %}
+                    </div>
+                {% elif (inflow_sum + outflow_sum) < 0 %}
+                    <div class="col mt-1 text-end text-danger">
                         {{ '%0.2f' | format((inflow_sum + outflow_sum)|float) }} zł
-                    {% else %}
+                    </div>
+                {% else %}
+                    <div class="col mt-1 text-end text-warning">
                         {{ '%0.2f' | format((inflow_sum + outflow_sum)|float) }} zł
-                    {% endif %}
-                </div>
+                    </div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -42,11 +61,11 @@
                         <div class="col">
                             {% if category_and_money[0] in income_cateogires %}
                                 <div class="col text-end">
-                                    Inflow: +{{ category_and_money[1] }} zł
+                                    Inflow: +{{ '%0.2f' | format(category_and_money[1]|float) }} zł
                                 </div>
                             {% else %}
                                 <div class="col text-end">
-                                    Outflow: {{ category_and_money[1] }} zł
+                                    Outflow: {{ '%0.2f' | format(category_and_money[1]|float) }} zł
                                 </div>
                             {% endif %}
                         </div>
@@ -67,12 +86,13 @@
                                 </div>
                                 <div class="row">
                                     <div class="col">
-                                        <a href="{{ url_for('open_edit_transaction_window', transaction_id=transaction.id) }}"
+                                        <a href="{{ url_for('open_edit_transaction_window', transaction_id=transaction.id, month=month, year=year) }}"
                                            type="button" class="mt-2 btn btn-sm btn-secondary">Edit</a>
                                     </div>
                                     <div class="col text-end">
                                         <button type="button" class="mt-2 btn btn-sm btn-danger" data-bs-toggle="modal"
-                                                data-bs-target="#deleteModal" data-bs-whatever="{{ transaction.id }}">Delete
+                                                data-bs-target="#deleteModal" data-bs-whatever="{{ transaction.id }}">
+                                            Delete
                                         </button>
                                     </div>
                                 </div>
@@ -115,7 +135,7 @@
             //
             // Update the modal's content.
             const modalFooterForm = deleteModal.querySelector('.modal-footer form')
-            modalFooterForm.setAttribute("action", "/home/transaction/" + recipient + "/delete")
+            modalFooterForm.setAttribute("action", "/home/transaction/" + recipient + "/delete?month=" + {{ month }} +"&year=" + {{ year }})
         })
     </script>
 {% endblock content %}

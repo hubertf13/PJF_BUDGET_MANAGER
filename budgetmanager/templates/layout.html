@@ -33,7 +33,7 @@
                 <!-- Navbar Right Side -->
                 <div class="navbar-nav ms-auto">
                     {% if current_user.is_authenticated %}
-                        <a class="nav-item btn btn-primary" href="{{ url_for('open_transaction_window') }}">Add
+                        <a class="nav-item btn btn-primary" href="{{ url_for('open_transaction_window', month=month, year=year) }}">Add
                             Transaction</a>
                         <a class="nav-item btn btn-primary ms-2" href="{{ url_for('account') }}">Account</a>
                         <a class="nav-item btn btn-primary ms-2" href="{{ url_for('logout') }}">Logout</a>

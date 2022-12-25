@@ -7,10 +7,13 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h1 class="modal-title fs-5" id="AddTransactionLabel">{{ legend }}</h1>
-                    <a type="button" class="btn-close" href="{{ url_for('home') }}"></a>
+                    <script>
+                        document.write('<a type="button" class="btn-close" href="' + document.referrer + '"></a>');
+                    </script>
                 </div>
                 <div class="modal-body">
-                    <form method="POST" action="{{ url_for('edit_transaction', transaction_id=transaction_id) }}">
+                    <form method="POST"
+                          action="{{ url_for('edit_transaction', transaction_id=transaction_id, month=month, year=year) }}">
                         {{ transactionForm.hidden_tag() }}
                         <div class="row mb-3">
                             <div class="col">
@@ -74,7 +77,9 @@
                             </div>
                         </div>
                         <div class="modal-footer">
-                            <a type="button" class="btn btn-secondary" href="{{ url_for('home') }}">Close</a>
+                            <script>
+                                document.write('<a type="button" class="btn btn-secondary" href="' + document.referrer + '">Close</a>');
+                            </script>
                             {{ transactionForm.submit(class="btn btn-primary") }}
                         </div>
                     </form>
