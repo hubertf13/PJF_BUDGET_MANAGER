@@ -10,8 +10,8 @@ from flask_login import login_user, current_user, logout_user, login_required
 from sqlalchemy import extract
 
 from budgetmanager import app, db, bcrypt
-from budgetmanager.forms import RegistrationForm, LoginForm, UpdateAccountForm, TransactionForm
-from budgetmanager.models import User, Transaction, Category
+from budgetmanager.forms import RegistrationForm, LoginForm, UpdateAccountForm, TransactionForm, LimitsForm
+from budgetmanager.models import User, Transaction, Category, UserExpenseLimit
 
 APPNAME = "Budget Manager"
 
@@ -40,7 +40,7 @@ def first_database_init():
         db.session.commit()
 
 
-def get_categories_list():
+def get_categories_tuple():
     categories = Category.query.all()
     value_name_list = []
     for category in categories:
@@ -138,6 +138,14 @@ def get_required_data():
     return categorized_transactions, inflow_sum, money_amount_by_category, month, outflow_sum, year
 
 
+def get_limit_if_present(category):
+    user_category_limit = UserExpenseLimit.query.filter_by(user_id=current_user.id, category_name=category).first()
+    if user_category_limit is None:
+        return -1
+    else:
+        return user_category_limit.max_amount
+
+
 @app.route("/home/month")
 def home_by_date():
     if len(request.values.keys()) != 0:
@@ -169,6 +177,7 @@ def home():
         categorized_transactions = get_categorized_transactions(month, year)
         money_amount_by_category = get_money_amount_by_category(categorized_transactions)
         inflow_sum, outflow_sum = get_inflow_and_outflow_sum(money_amount_by_category)
+        get_flash_if_limit_exceeded(money_amount_by_category)
         return render_template("home.html", transactions=categorized_transactions, appname=APPNAME,
                                money_amount_by_category=money_amount_by_category, inflow_sum=inflow_sum,
                                income_cateogires=get_income_categories(), outflow_sum=outflow_sum, month=month,
@@ -181,10 +190,11 @@ def home():
 @login_required
 def new_transaction():
     form = TransactionForm()
-    form.category.choices = get_categories_list()
+    form.category.choices = get_categories_tuple()
     categorized_transactions, inflow_sum, money_amount_by_category, month, outflow_sum, year = get_required_data()
     date = datetime.datetime(int(year), int(month), datetime.datetime.utcnow().day)
     month_name = date.strftime("%B")
+    form.date.data = date
 
     if form.validate_on_submit():
         income_categories = get_income_categories()
@@ -203,6 +213,17 @@ def new_transaction():
                            legend='Add Transaction', month=month, year=year, month_name=month_name)
 
 
+def get_flash_if_limit_exceeded(money_amount_by_category):
+    for mabc in money_amount_by_category:
+        category = mabc[0]
+        category_money_amount = mabc[1]
+        category_money_amount = category_money_amount - (2 * category_money_amount)
+        user_category_limit = UserExpenseLimit.query.filter_by(user_id=current_user.id, category_name=category).first()
+        if user_category_limit is not None:
+            if user_category_limit.max_amount < category_money_amount:
+                flash('The limit for ' + category + ' has been exceeded', 'warning')
+
+
 @app.route("/about")
 def about():
     return render_template("about.html", title='About')
@@ -211,7 +232,7 @@ def about():
 @app.route("/register", methods=['GET', 'POST'])
 def register():
     if current_user.is_authenticated:
-        return redirect(url_for('home'))
+        return redirect(url_for('home_by_date'))
     form = RegistrationForm()
     # if form was submitted (clicked button)
     if form.validate_on_submit():
@@ -228,7 +249,7 @@ def register():
 @app.route("/login", methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
-        return redirect(url_for('home'))
+        return redirect(url_for('home_by_date'))
     form = LoginForm()
     if form.validate_on_submit():
         user = User.query.filter_by(username=form.username.data).first()
@@ -236,7 +257,7 @@ def login():
             login_user(user, remember=form.remember.data)
             next_page = request.args.get('next')
             # if next_page is not None then redirect to next page else redirect to home
-            return redirect(next_page) if next_page else redirect(url_for('home'))
+            return redirect(next_page) if next_page else redirect(url_for('home_by_date'))
         else:
             flash('Login Unsuccessful. Please check username and password', 'danger')
     return render_template('login.html', title='Login', form=form, appname=APPNAME)
@@ -245,7 +266,7 @@ def login():
 @app.route("/logout")
 def logout():
     logout_user()
-    return redirect(url_for('home'))
+    return redirect(url_for('home_by_date'))
 
 
 @app.route("/account", methods=['GET', 'POST'])
@@ -287,7 +308,7 @@ def edit_transaction(transaction_id):
     if transaction.user_id != current_user.id:
         abort(403)
     form = TransactionForm()
-    form.category.choices = get_categories_list()
+    form.category.choices = get_categories_tuple()
     categorized_transactions, inflow_sum, money_amount_by_category, month, outflow_sum, year = get_required_data()
     income_categories = get_income_categories()
     date = datetime.datetime(int(year), int(month), datetime.datetime.utcnow().day)
@@ -317,11 +338,34 @@ def edit_transaction(transaction_id):
                            legend='Edit Transaction', month=month, year=year, month_name=month_name)
 
 
-@app.route("/settings")
+@app.route("/settings", methods=['GET', 'POST'])
 @login_required
 def settings():
-    form = UpdateAccountForm()
+    form = LimitsForm()
+    form.category.choices = delete_income_categories()
+
     if form.validate_on_submit():
-        flash('Your setting has been updated!', 'success')
+        user_expense_limit = UserExpenseLimit(user_id=current_user.id, category_name=form.category.data,
+                                              max_amount=form.limit.data)
+
+        user_category_limit = UserExpenseLimit.query.filter_by(user_id=current_user.id,
+                                                               category_name=form.category.data).first()
+        if user_category_limit is not None:
+            user_category_limit.max_amount = form.limit.data
+        else:
+            db.session.add(user_expense_limit)
+        db.session.commit()
+        flash('Your settings has been updated!', 'success')
         return redirect(url_for('settings'))
-    return "hello"
+    all_limits = UserExpenseLimit.query.filter_by(user_id=current_user.id).all()
+    return render_template("settings.html", appname=APPNAME, form=form, all_limits=all_limits)
+
+
+def delete_income_categories():
+    all_categories = get_categories_tuple()
+    income_categories = get_income_categories()
+    for ic in income_categories:
+        for ac in all_categories:
+            if ac[0] == ic:
+                all_categories.remove(ac)
+    return all_categories

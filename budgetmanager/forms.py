@@ -47,3 +47,8 @@ class TransactionForm(FlaskForm):
     description = TextAreaField('Description', validators=[Length(min=0, max=100)])
     date = DateField('Date', default=datetime.utcnow, validators=[DataRequired()])
     submit = SubmitField("Save")
+
+class LimitsForm(FlaskForm):
+    category = SelectField("Category", validators=[DataRequired()], choices=[])
+    limit = DecimalField("Limit", validators=[DataRequired(), NumberRange(min=0.01)], places=2)
+    submit = SubmitField('Save')
