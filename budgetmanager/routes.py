@@ -2,15 +2,18 @@
 import datetime
 import os
 import secrets
+import random
+from calendar import monthrange
+from itertools import groupby
 from operator import attrgetter
 
 from PIL import Image
 from flask import render_template, url_for, flash, redirect, request, abort
 from flask_login import login_user, current_user, logout_user, login_required
-from sqlalchemy import extract
+from sqlalchemy import extract, func, select
 
 from budgetmanager import app, db, bcrypt
-from budgetmanager.forms import RegistrationForm, LoginForm, UpdateAccountForm, TransactionForm, LimitsForm
+from budgetmanager.forms import RegistrationForm, LoginForm, UpdateAccountForm, TransactionForm, LimitsForm, ReportForm
 from budgetmanager.models import User, Transaction, Category, UserExpenseLimit
 
 APPNAME = "Budget Manager"
@@ -194,7 +197,8 @@ def new_transaction():
     categorized_transactions, inflow_sum, money_amount_by_category, month, outflow_sum, year = get_required_data()
     date = datetime.datetime(int(year), int(month), datetime.datetime.utcnow().day)
     month_name = date.strftime("%B")
-    form.date.data = date
+    if request.method == 'GET':
+        form.date.data = date
 
     if form.validate_on_submit():
         income_categories = get_income_categories()
@@ -369,3 +373,159 @@ def delete_income_categories():
             if ac[0] == ic:
                 all_categories.remove(ac)
     return all_categories
+
+
+def prepare_data(amount_by_date):
+    data = []
+    for abd in amount_by_date:
+        data.append((abd[1].strftime("%Y-%m-%d"), round(float(abd[2]), 2)))
+    return data
+
+
+def get_year_month(date):
+    """Return year and month part of an ISO 8601 date."""
+    return date[:7]
+
+
+@app.route("/reports", methods=['GET', 'POST'])
+@login_required
+def reports():
+    form = ReportForm()
+    colors = ['rgba(255, 0, 0, 0.2)', 'rgba(0, 255, 0, 0.2)', 'rgba(0, 0, 255, 0.2)', 'rgba(255, 255, 0, 0.2)',
+              'rgba(0, 255, 255, 0.2)', 'rgba(255, 0, 255, 0.2)', 'rgba(128, 0, 0, 0.2)', 'rgba(128, 128, 0, 0.2)',
+              'rgba(0, 0, 128, 0.2)', 'rgba(128, 0, 128, 0.2)', 'rgba(0, 128, 128, 0.2)', 'rgba(255, 215, 0, 0.2)',
+              'rgba(224, 255, 255, 0.2)', 'rgba(255, 0, 255, 0.2)', 'rgba(139, 69, 19, 0.2)',
+              'rgba(112, 128, 144, 0.2)', 'rgba(75, 0, 130, 0.2)', 'rgba(106, 90, 205, 0.2)',
+              'rgba(245, 222, 179, 0.2)', 'rgba(205, 133, 63, 0.2)', 'rgba(188, 143, 143, 0.2)',
+              'rgba(255, 245, 238, 0.2)', 'rgba(220,20,60 0.2)', 'rgba(250,128,114, 0.2)', 'rgba(205, 92, 92, 0.2)',
+              'rgba(240, 255, 240, 0.2)', 'rgba(105, 105, 105, 0.2)', 'rgba(255, 250, 250, 0.2)',
+              'rgba(255, 218, 185, 0.2)', 'rgba(128, 0, 0, 0.2)', 'rgba(255, 127, 80, 0.2)', 'rgba(0, 255, 255, 0.2)',
+              'rgba(46, 139, 87, 0.2)', 'rgba(240, 230, 140, 0.2)', 'rgba(255, 165, 0, 0.2)']
+    pie_colors1 = colors.copy()
+    pie_colors2 = colors.copy()
+    random.shuffle(colors)
+    random.shuffle(pie_colors1)
+    random.shuffle(pie_colors2)
+    year = datetime.datetime.utcnow().year
+    month = datetime.datetime.utcnow().month
+    num_of_days = monthrange(year, month)[1]
+    labels, values = get_bar_chart_values(month, num_of_days, year)
+
+    pie_labels1, pie_values1 = get_pie_chart_income_values(month, num_of_days, year)
+    pie_labels2, pie_values2 = get_pie_chart_expense_values(month, num_of_days, year)
+
+    if form.validate_on_submit():
+        if form.time_range.data == "this_year":
+            labels, values = get_bar_chart_values_of_actual_year()
+            pie_labels1, pie_values1 = get_pie_chart_income_values_of_actual_year()
+            pie_labels2, pie_values2 = get_pie_chart_expense_values_of_actual_year(year)
+
+        elif form.time_range.data == "last_month":
+            year = datetime.datetime.utcnow().year
+            month = datetime.datetime.utcnow().month - 1
+            if month < 1:
+                year = year - 1
+                month = 12
+            num_of_days = monthrange(year, month)[1]
+            labels, values = get_bar_chart_values(month, num_of_days, year)
+            pie_labels1, pie_values1 = get_pie_chart_income_values(month, num_of_days, year)
+            pie_labels2, pie_values2 = get_pie_chart_expense_values(month, num_of_days, year)
+
+    return render_template("report.html", appname=APPNAME, form=form, labels=labels, values=values, colors=colors,
+                           pie_labels1=pie_labels1, pie_values1=pie_values1, pie_colors1=pie_colors1,
+                           pie_labels2=pie_labels2, pie_values2=pie_values2, pie_colors2=pie_colors2)
+
+
+def get_pie_chart_expense_values_of_actual_year(year):
+    pie_sub_statement = (
+        select(Transaction.transaction_date, func.sum(Transaction.amount).label("sum"), Transaction.category_name)
+        .where(Transaction.user_id == current_user.id)
+        .where(Transaction.transaction_date >= (str(year) + '-01-01'))
+        .where(Transaction.transaction_date <= (str(year) + '-12-31'))
+        .where(Transaction.category_name.not_in(get_income_categories()))
+        .group_by(Transaction.category_name)
+    )
+    pie_rows = db.session.execute(pie_sub_statement).all()
+
+    pie_labels = [row[2] for row in pie_rows]
+    pie_values = [round(float(row[1] - (2 * row[1])), 2) for row in pie_rows]
+    return pie_labels, pie_values
+
+
+def get_pie_chart_income_values_of_actual_year():
+    pie_sub_statement = (
+        select(Transaction.transaction_date, func.sum(Transaction.amount).label("sum"), Transaction.category_name)
+        .where(Transaction.user_id == current_user.id)
+        .where(Transaction.transaction_date >= '2022-01-01')
+        .where(Transaction.transaction_date <= '2022-12-31')
+        .where(Transaction.category_name.in_(get_income_categories()))
+        .group_by(Transaction.category_name)
+    )
+    pie_rows = db.session.execute(pie_sub_statement).all()
+
+    pie_labels = [row[2] for row in pie_rows]
+    pie_values = [round(float(row[1]), 2) for row in pie_rows]
+    return pie_labels, pie_values
+
+
+def get_bar_chart_values_of_actual_year():
+    sub_statement = (
+        select(Transaction.transaction_date, func.sum(Transaction.amount).label("sum"))
+        .where(Transaction.user_id == current_user.id)
+        .where(Transaction.transaction_date >= '2022-01-01')
+        .where(Transaction.transaction_date <= '2022-12-31')
+        .group_by(Transaction.transaction_date)
+    )
+    rows = db.session.execute(sub_statement).all()
+    data_list = []
+    for row in rows:
+        data_list.append((row[0].strftime("%Y-%m-%d"), round(float(row[1]), 2)))
+    amount_by_date = []
+    month_groups = groupby(data_list, lambda day_data: get_year_month(day_data[0]))
+    for month, month_data in month_groups:
+        amount_by_date.append((month, sum(day_data[1] for day_data in month_data)))
+    labels = [row[0] for row in amount_by_date]
+    values = [row[1] for row in amount_by_date]
+    return labels, values
+
+
+def get_pie_chart_expense_values(month, num_of_days, year):
+    categories_amount_by_date = db.session.query(Transaction.user_id, Transaction.transaction_date,
+                                                 func.sum(Transaction.amount), Transaction.category_name).filter_by(
+        user_id=current_user.id).filter(
+        Transaction.transaction_date >= datetime.datetime(year, month, 1)).filter(
+        Transaction.transaction_date <= datetime.datetime(year, month, num_of_days)).group_by(
+        Transaction.transaction_date).filter(Transaction.category_name.not_in(get_income_categories())).all()
+    pie_data = []
+    for cabd in categories_amount_by_date:
+        pie_data.append((cabd[3], round(float(cabd[2] - (2 * cabd[2])), 2)))
+    pie_labels = [row[0] for row in pie_data]
+    pie_values = [row[1] for row in pie_data]
+    return pie_labels, pie_values
+
+
+def get_pie_chart_income_values(month, num_of_days, year):
+    categories_amount_by_date = db.session.query(Transaction.user_id, Transaction.transaction_date,
+                                                 func.sum(Transaction.amount), Transaction.category_name).filter_by(
+        user_id=current_user.id).filter(
+        Transaction.transaction_date >= datetime.datetime(year, month, 1)).filter(
+        Transaction.transaction_date <= datetime.datetime(year, month, num_of_days)).group_by(
+        Transaction.transaction_date).filter(Transaction.category_name.in_(get_income_categories())).all()
+    pie_data = []
+    for cabd in categories_amount_by_date:
+        pie_data.append((cabd[3], round(float(cabd[2]), 2)))
+    pie_labels = [row[0] for row in pie_data]
+    pie_values = [row[1] for row in pie_data]
+    return pie_labels, pie_values
+
+
+def get_bar_chart_values(month, num_of_days, year):
+    amount_by_date = db.session.query(Transaction.user_id, Transaction.transaction_date,
+                                      func.sum(Transaction.amount)).filter_by(user_id=current_user.id).filter(
+        Transaction.transaction_date >= datetime.datetime(year, month, 1)).filter(
+        Transaction.transaction_date <= datetime.datetime(year, month, num_of_days)).group_by(
+        Transaction.transaction_date).all()
+    data = prepare_data(amount_by_date)
+    labels = [row[0] for row in data]
+    values = [row[1] for row in data]
+    return labels, values
