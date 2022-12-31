@@ -1,5 +1,4 @@
-# This file tells python that this is a package.
-# It also initializes and ties together everything that we need for app.
+# This file initializes and ties together everything that we need for app.
 
 from flask import Flask
 from flask_bcrypt import Bcrypt
