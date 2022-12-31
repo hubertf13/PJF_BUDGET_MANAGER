@@ -4,8 +4,8 @@
 
 ## 👀 About
 
-Project was done for Functional Programming class for [Military University of Technology](https://wcy.wat.edu.pl/).
-It is a python web application to control your own budget with the possibility of registration for multiple users.
+<p align="justify">Project was done for Functional Programming class for [Military University of Technology](https://wcy.wat.edu.pl/).
+It is a python web application to control your own budget with the possibility of registration for multiple users.</p>
 
 ## 🕹️ Functionalities
 
