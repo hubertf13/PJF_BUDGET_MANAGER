@@ -127,8 +127,7 @@ def get_request_values_if_present():
     if len(request.values.keys()) == 0:
         date = datetime.datetime.utcnow()
     else:
-        date = datetime.datetime(int(request.values.get('year')), int(request.values.get('month')),
-                                 datetime.datetime.utcnow().day)
+        date = datetime.datetime(int(request.values.get('year')), int(request.values.get('month')), 15)
     return date
 
 
@@ -195,7 +194,7 @@ def new_transaction():
     form = TransactionForm()
     form.category.choices = get_categories_tuple()
     categorized_transactions, inflow_sum, money_amount_by_category, month, outflow_sum, year = get_required_data()
-    date = datetime.datetime(int(year), int(month), datetime.datetime.utcnow().day)
+    date = datetime.datetime(int(year), int(month), 15)
     month_name = date.strftime("%B")
     if request.method == 'GET':
         form.date.data = date
@@ -315,7 +314,7 @@ def edit_transaction(transaction_id):
     form.category.choices = get_categories_tuple()
     categorized_transactions, inflow_sum, money_amount_by_category, month, outflow_sum, year = get_required_data()
     income_categories = get_income_categories()
-    date = datetime.datetime(int(year), int(month), datetime.datetime.utcnow().day)
+    date = datetime.datetime(int(year), int(month), 15)
     month_name = date.strftime("%B")
 
     if form.validate_on_submit():
