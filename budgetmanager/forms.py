@@ -1,3 +1,4 @@
+from calendar import monthrange
 from datetime import datetime
 
 from flask_login import current_user
@@ -48,7 +49,22 @@ class TransactionForm(FlaskForm):
     date = DateField('Date', default=datetime.utcnow, validators=[DataRequired()])
     submit = SubmitField("Save")
 
+
 class LimitsForm(FlaskForm):
     category = SelectField("Category", validators=[DataRequired()], choices=[])
     limit = DecimalField("Limit", validators=[DataRequired(), NumberRange(min=0.01)], places=2)
     submit = SubmitField('Save')
+
+
+class ReportForm(FlaskForm):
+    time_range = SelectField("Time Range", validators=[DataRequired()], choices=[
+        ('this_month', 'This month'),
+        ('last_month', 'Last month'),
+        ('this_year', 'This year'),
+    ])
+    dateStart = DateField('Starting Date', default=datetime(datetime.utcnow().year, datetime.utcnow().month, 1),
+                          validators=[DataRequired()])
+    dateEnd = DateField('End Date', default=datetime(datetime.utcnow().year, datetime.utcnow().month,
+                                                     monthrange(datetime.utcnow().year, datetime.utcnow().month)[1]),
+                        validators=[DataRequired()])
+    submit = SubmitField("Change")

@@ -2,9 +2,9 @@
 # It also initializes and ties together everything that we need for app.
 
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from flask_login import LoginManager
+from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'bed1f427a3b2ae335962a7414bb258ca'
