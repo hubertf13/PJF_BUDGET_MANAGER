@@ -24,13 +24,8 @@
                     aria-controls="navbarToggle" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
-            <!-- https://stackoverflow.com/questions/19733447/bootstrap-navbar-with-left-center-or-right-aligned-items/20362024#20362024 -->
             <div class="collapse navbar-collapse" id="navbarToggle">
                 <a class="navbar-brand fs-2 fw-bold" style="color: white;" href="/">{{ appname }}</a>
-                <div class="navbar-nav me-auto">
-                    <!-- <a class="nav-item btn btn-primary me-2" href="{{ url_for('home') }}">Home</a>
-                    <a class="nav-item btn btn-primary me-2" href="{{ url_for('about') }}">About</a> -->
-                </div>
                 <!-- Navbar Right Side -->
                 <div class="navbar-nav ms-auto">
                     {% if current_user.is_authenticated %}
@@ -134,7 +129,14 @@
                             plugins: {
                                 legend: {
                                     display: true,
-                                    position: 'right'
+                                    position: 'right',
+                                    title: {
+                                        display: true,
+                                        text: 'Income',
+                                        font: {
+                                            size: 18
+                                        }
+                                    }
                                 }
                             },
                             responsive: false,
@@ -165,7 +167,14 @@
                             plugins: {
                                 legend: {
                                     display: true,
-                                    position: 'right'
+                                    position: 'right',
+                                    title: {
+                                        display: true,
+                                        text: 'Expense',
+                                        font: {
+                                            size: 18
+                                        }
+                                    }
                                 }
                             },
                             responsive: false

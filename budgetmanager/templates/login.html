@@ -1,7 +1,6 @@
 {% extends "layout.html" %}
 {% block content %}
     <div class="content-section">
-        <!-- it will post to the same route that we are currently on -->
         <form method="POST">
             <!-- csrf token -->
             {{ form.hidden_tag() }}
@@ -46,7 +45,6 @@
     </div>
     <div class="border-top pt-3">
         <small class="text-muted">
-            <!-- in url_for we pass method name (not route name) -->
             Register <a class="ml-2" href="{{ url_for('register') }}"> Here</a>
         </small>
     </div>

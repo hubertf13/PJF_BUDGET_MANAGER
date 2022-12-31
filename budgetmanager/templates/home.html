@@ -22,7 +22,7 @@
                     Inflow:
                 </div>
                 <div class="col text-end">
-                    +{{ inflow_sum }} zł
+                    +{{ '%0.2f' | format((inflow_sum)|float) }} zł
                 </div>
             </div>
             <div class="row text-danger">
@@ -30,7 +30,7 @@
                     Outflow:
                 </div>
                 <div class="col text-end">
-                    {{ outflow_sum }} zł
+                    {{ '%0.2f' | format((outflow_sum)|float) }} zł
                 </div>
             </div>
             <div class="row" style="text-decoration: overline">
@@ -130,9 +130,6 @@
             const button = event.relatedTarget
             // Extract info from data-bs-* attributes
             const recipient = button.getAttribute('data-bs-whatever')
-            // If necessary, you could initiate an AJAX request here
-            // and then do the updating in a callback.
-            //
             // Update the modal's content.
             const modalFooterForm = deleteModal.querySelector('.modal-footer form')
             modalFooterForm.setAttribute("action", "/home/transaction/" + recipient + "/delete?month=" + {{ month }} +"&year=" + {{ year }})

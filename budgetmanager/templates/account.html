@@ -9,7 +9,6 @@
                 <h2 class="account-heading">{{ current_user.username }}</h2>
             </div>
         </div>
-        <!-- it will post to the same route that we are currently on, enctype is for picture update -->
         <form method="POST" action="" enctype="multipart/form-data">
             <!-- csrf token -->
             {{ form.hidden_tag() }}
