@@ -35,7 +35,7 @@
             </div>
             <div class="row" style="text-decoration: overline">
                 {% if (inflow_sum + outflow_sum) > 0 %}
-                    <div class="col mt-1 text-end text-success" >
+                    <div class="col mt-1 text-end text-success">
                         +{{ '%0.2f' | format((inflow_sum + outflow_sum)|float) }} zł
                     </div>
                 {% elif (inflow_sum + outflow_sum) < 0 %}

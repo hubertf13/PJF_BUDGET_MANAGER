@@ -1,8 +1,8 @@
 # This file contains all the logic.
 import datetime
 import os
-import secrets
 import random
+import secrets
 from calendar import monthrange
 from itertools import groupby
 from operator import attrgetter
@@ -227,11 +227,6 @@ def get_flash_if_limit_exceeded(money_amount_by_category):
                 flash('The limit for ' + category + ' has been exceeded', 'warning')
 
 
-@app.route("/about")
-def about():
-    return render_template("about.html", title='About')
-
-
 @app.route("/register", methods=['GET', 'POST'])
 def register():
     if current_user.is_authenticated:
@@ -416,7 +411,7 @@ def reports():
     if form.validate_on_submit():
         if form.time_range.data == "this_year":
             labels, values = get_bar_chart_values_of_actual_year()
-            pie_labels1, pie_values1 = get_pie_chart_income_values_of_actual_year()
+            pie_labels1, pie_values1 = get_pie_chart_income_values_of_actual_year(year)
             pie_labels2, pie_values2 = get_pie_chart_expense_values_of_actual_year(year)
 
         elif form.time_range.data == "last_month":
@@ -451,12 +446,12 @@ def get_pie_chart_expense_values_of_actual_year(year):
     return pie_labels, pie_values
 
 
-def get_pie_chart_income_values_of_actual_year():
+def get_pie_chart_income_values_of_actual_year(year):
     pie_sub_statement = (
         select(Transaction.transaction_date, func.sum(Transaction.amount).label("sum"), Transaction.category_name)
         .where(Transaction.user_id == current_user.id)
-        .where(Transaction.transaction_date >= '2022-01-01')
-        .where(Transaction.transaction_date <= '2022-12-31')
+        .where(Transaction.transaction_date >= (str(year) + '-01-01'))
+        .where(Transaction.transaction_date <= (str(year) + '-12-31'))
         .where(Transaction.category_name.in_(get_income_categories()))
         .group_by(Transaction.category_name)
     )
@@ -467,12 +462,12 @@ def get_pie_chart_income_values_of_actual_year():
     return pie_labels, pie_values
 
 
-def get_bar_chart_values_of_actual_year():
+def get_bar_chart_values_of_actual_year(year):
     sub_statement = (
         select(Transaction.transaction_date, func.sum(Transaction.amount).label("sum"))
         .where(Transaction.user_id == current_user.id)
-        .where(Transaction.transaction_date >= '2022-01-01')
-        .where(Transaction.transaction_date <= '2022-12-31')
+        .where(Transaction.transaction_date >= (str(year) + '-01-01'))
+        .where(Transaction.transaction_date <= (str(year) + '-12-31'))
         .group_by(Transaction.transaction_date)
     )
     rows = db.session.execute(sub_statement).all()

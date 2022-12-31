@@ -1,6 +1,9 @@
 from datetime import datetime
-from budgetmanager import db, login_manager
+
 from flask_login import UserMixin
+
+from budgetmanager import db, login_manager
+
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -21,6 +24,7 @@ class User(db.Model, UserMixin):
     def __repr__(self):
         return f"User('{self.username}', '{self.image_file}')"
 
+
 class Category(db.Model):
     name = db.Column(db.String(100), primary_key=True)
     type = db.Column(db.String(100), nullable=False)
@@ -29,6 +33,7 @@ class Category(db.Model):
 
     def __repr__(self):
         return f"'{self.name}':'{self.type}'"
+
 
 class Transaction(db.Model):
     id = db.Column(db.Integer, primary_key=True)
