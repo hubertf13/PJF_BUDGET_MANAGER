@@ -61,6 +61,7 @@ class ReportForm(FlaskForm):
         ('this_month', 'This month'),
         ('last_month', 'Last month'),
         ('this_year', 'This year'),
+        ('last_year', 'Last year'),
     ])
     dateStart = DateField('Starting Date', default=datetime(datetime.utcnow().year, datetime.utcnow().month, 1),
                           validators=[DataRequired()])

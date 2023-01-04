@@ -280,6 +280,11 @@ def reports():
             pie_labels1, pie_values1 = get_pie_chart_income_values(month, num_of_days, year)
             pie_labels2, pie_values2 = get_pie_chart_expense_values(month, num_of_days, year)
 
+        elif form.time_range.data == "last_year":
+            labels, values = get_bar_chart_values_of_actual_year(year - 1)
+            pie_labels1, pie_values1 = get_pie_chart_income_values_of_actual_year(year - 1)
+            pie_labels2, pie_values2 = get_pie_chart_expense_values_of_actual_year(year - 1)
+
     return render_template("report.html", appname=APPNAME, form=form, labels=labels, values=values, colors=colors,
                            pie_labels1=pie_labels1, pie_values1=pie_values1, pie_colors1=pie_colors1,
                            pie_labels2=pie_labels2, pie_values2=pie_values2, pie_colors2=pie_colors2)
